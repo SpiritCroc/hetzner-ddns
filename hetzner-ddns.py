@@ -195,6 +195,8 @@ def delete_record(rid):
 
 def main(all_args):
     delay = 999999999999999999999999999999999999999
+    needs_a = False
+    needs_aaaa = False
     # Prepare
     for args in all_args:
         delay = min(int(args["--repeat"]), delay)
@@ -202,10 +204,38 @@ def main(all_args):
         print("Finding DNS zones for %s / %s..." % (args["--hostname"], args["--zone"]))
         args["zone-internal"] = find_zone(args["--zone"])
 
+        needs_a = needs_a or not bool(args["--disable-v4"])
+        needs_aaaa = needs_aaaa or not bool(args["--disable-v6"])
+
+    previous_a = None
+    previous_aaaa = None
+
     # Loop
     while True:
-        addr_a = None
-        addr_aaaa = None
+
+        if needs_a:
+            print("Finding public IPv4 address...")
+            addr_a = get_addr(args["--v4-api"])
+            print("    %s" % addr_a)
+        else:
+            addr_a = None
+
+        if needs_aaaa:
+            print("Finding public IPv6 address...")
+            addr_aaaa = get_addr(args["--v6-api"])
+            print("    %s" % addr_aaaa)
+        else:
+            addr_aaaa = None
+
+        if addr_a == previous_a and addr_aaaa == previous_aaaa:
+            print("IPs haven't changed since last check, don't check hetzner")
+            print(f"Sleeping for {delay} seconds...")
+            time.sleep(delay)
+            continue
+
+        previous_a = addr_a
+        previous_aaaa = addr_aaaa
+
         for args in all_args:
             print("Handling %s / %s" % (args["--hostname"], args["--zone"]))
             kinds = []
@@ -218,16 +248,8 @@ def main(all_args):
 
             for kind in kinds:
                 if kind == "A":
-                    if addr_a == None:
-                        print("Finding public IPv4 address...")
-                        addr_a = get_addr(args["--v4-api"])
-                        print("    %s" % addr_a)
                     addr = addr_a
                 else:
-                    if addr_aaaa == None:
-                        print("Finding public IPv6 address...")
-                        addr_aaaa = get_addr(args["--v6-api"])
-                        print("    %s" % addr_aaaa)
                     addr = addr_aaaa
 
                 print("Finding existing %s record..." % kind)
