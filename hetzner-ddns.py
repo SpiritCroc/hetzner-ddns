@@ -150,9 +150,9 @@ def find_zone(name):
     raise (Exception("Zone not found: %s" % name))
 
 
-def update_record(record):
+def update_record(record_id, record):
     response = requests.put(
-        url="https://dns.hetzner.com/api/v1/records/%s" % record["id"],
+        url="https://dns.hetzner.com/api/v1/records/%s" % record_id,
         headers={
             "Content-Type": "application/json",
             "Auth-API-Token": args["--token"],
@@ -217,20 +217,31 @@ def main():
                     print("Existing record is up-to-date")
                     continue
 
-                print("Deleting existing %s record..." % kind)
-                delete_record(rec["id"])
-                print("    done")
-
-            print("Creating new %s record..." % kind)
-            create_record(
-                {
-                    "value": addr,
-                    "type": kind,
-                    "name": args["--hostname"],
-                    "zone_id": zone["id"],
-                    "ttl": args["--ttl"],
-                }
-            )
+                #print("Deleting existing %s record..." % kind)
+                #delete_record(rec["id"])
+                #print("    done")
+                print("Updating existing %s record..." % kind)
+                print(rec)
+                update_record(rec["id"],
+                    {
+                        "value": addr,
+                        "type": kind,
+                        "name": args["--hostname"],
+                        "zone_id": zone["id"],
+                        "ttl": args["--ttl"],
+                    }
+                )
+            else:
+                print("Creating new %s record..." % kind)
+                create_record(
+                    {
+                        "value": addr,
+                        "type": kind,
+                        "name": args["--hostname"],
+                        "zone_id": zone["id"],
+                        "ttl": args["--ttl"],
+                    }
+                )
             print("    done")
 
         print(f"Sleeping for {delay} seconds...")
